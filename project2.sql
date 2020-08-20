@@ -349,3 +349,21 @@ CREATE VIEW ExamTimePlace AS
            AS ExamTime
            LEFT JOIN
            Reserve ON ExamTime.eventNo = Reserve.eventNo;
+
+/* Typical queries */
+/* Query the exact number and the limit number of students in one group */
+SELECT EnrollForCourses.groupNo, COUNT(studentID), studentLimit
+FROM EnrollForCourses, ExerciseGroups
+WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
+Group BY EnrollForCourses.groupNo
+
+/* Query the exact number of students in one exam */
+SELECT examNo, COUNT(studentID)
+FROM EnrollForExams
+GROUP BY examNo
+
+/* Query the number of computers in one room which could used by students to have a lecture or exam */
+SELECT buildingID, roomID, COUNT(Computers.equipmentID)
+FROM Computers, Equipments
+WHERE users = 'students' AND Computers.equipmentID = Equipments.equipmentID 
+GROUP BY buildingID, roomID
