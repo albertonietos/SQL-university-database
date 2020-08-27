@@ -418,6 +418,7 @@ CREATE TABLE Reserve (
 \end{lstlisting}
 
 \section{Insert data into the database}
+
 \begin{lstlisting}[language=SQL]
 INSERT INTO Courses
 VALUES ('CS-A1150', 'Databases', 5);
@@ -490,4 +491,102 @@ INSERT INTO Reserve
 VALUES ('20200903L1', 'building1', 'room101');
 \end{lstlisting}
 
+\section{Views}
+
+\begin{lstlisting}[language=SQL]
+CREATE VIEW LectureTimePlace AS
+	SELECT instanceNo,
+		lectureNo,
+		date,
+		startTime,
+		endTime,
+		buildingID,
+		roomID
+	FROM (
+		SELECT instanceNo,
+			lectureNo,
+			Lectures.eventNo,
+			date,
+			startTime,
+			endTime
+		FROM Lectures
+			LEFT JOIN
+			Events ON Lectures.eventNo = Events.eventNo
+	)
+	AS LectureTime
+	LEFT JOIN
+	Reserve ON LectureTime.eventNo = Reserve.eventNo;
+
+CREATE VIEW MeetingTimePlace AS
+	SELECT groupNo,
+		meetingNo,
+		date,
+		startTime,
+		endTime,
+		buildingID,
+		roomID
+	FROM (
+		SELECT groupNo,
+			meetingNo,
+			GroupMeetings.eventNo,
+			date,
+			startTime,
+			endTime
+		FROM GroupMeetings
+			LEFT JOIN
+			Events ON GroupMeetings.eventNo = Events.eventNo
+	)
+	AS MeetingTime
+	LEFT JOIN
+	Reserve ON MeetingTime.eventNo = Reserve.eventNo;
+
+CREATE VIEW ExamTimePlace AS
+	SELECT courseCode,
+		examNo,
+		startExamTime,
+		endExamTime,
+		date,
+		startTime,
+		endTime,
+		buildingID,
+		roomID
+	FROM (
+		SELECT courseCode,
+			examNo,
+			Exams.eventNo,
+			startExamTime,
+			endExamTime,
+			date,
+			startTime,
+			endTime
+		FROM Exams
+			LEFT JOIN
+			Events ON Exams.eventNo = Events.eventNo
+	)
+	AS ExamTime
+	LEFT JOIN
+	Reserve ON ExamTime.eventNo = Reserve.eventNo;
+\end{lstlisting}
+
+\section{Indexes}
+
+\section{Use cases}
+\begin{lstlisting}[language=SQL]
+/* Query the exact number and the limit number of students in one group */
+SELECT EnrollForCourses.groupNo, COUNT(studentID), studentLimit
+FROM EnrollForCourses, ExerciseGroups
+WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
+Group BY EnrollForCourses.groupNo
+
+/* Query the exact number of students in one exam */
+SELECT examNo, COUNT(studentID)
+FROM EnrollForExams
+GROUP BY examNo
+
+/* Query the number of computers in one room which could used by students to have a lecture or exam */
+SELECT buildingID, roomID, COUNT(Computers.equipmentID)
+FROM Computers, Equipments
+WHERE users = 'students' AND Computers.equipmentID = Equipments.equipmentID 
+GROUP BY buildingID, roomID
+\end{lstlisting}
 \end{document}
