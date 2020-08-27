@@ -157,6 +157,7 @@ CREATE TABLE Equipments (
     roomID) 
 );
 
+
 CREATE TABLE VideoProjectors (
     equipmentID TEXT PRIMARY KEY,
     FOREIGN KEY (
@@ -210,8 +211,23 @@ CREATE TABLE Reserve (
 INSERT INTO Courses
 VALUES ('CS-A1150', 'Databases', 5);
 
+INSERT INTO Courses
+VALUES ('CS-E4800', 'Artificial Intelligence', 5);
+
+INSERT INTO Courses
+VALUES ('CS-E4610', 'Modern Database Systems', 5);
+
 INSERT INTO CourseInstances
 VALUES ('CS-A1150-2020-1', 2020, 1, '2020-09-03', '2020-11-20', 'CS-A1150');
+
+INSERT INTO CourseInstances
+VALUES ('CS-E4800-2020-1', 2020, 1, '2020-09-01', '2020-12-27', 'CS-E4800');
+
+INSERT INTO CourseInstances
+VALUES ('CS-E4610-2020-1', 2020, 1, '2021-09-07', '2021-11-23', 'CS-E4610');
+
+INSERT INTO CourseInstances
+VALUES ('CS-E4610-2020-2', 2020, 2, '2021-01-05', '2021-04-05', 'CS-E4610');
 
 INSERT INTO ExerciseGroups
 VALUES ('CS-A1150-group1', 10, 'CS-A1150-2020-1');
@@ -351,19 +367,70 @@ CREATE VIEW ExamTimePlace AS
            Reserve ON ExamTime.eventNo = Reserve.eventNo;
 
 /* Typical queries */
+
+/* Query all distinct courses (course code and name) taken place during the first semester of 2020 */
+SELECT DISTINCT courseCode, courseName
+  FROM CourseInstances AS CI,
+       Courses AS C
+ WHERE CI.courseCode = C.courseCode AND 
+       year = 2020 AND 
+       semester = 1;
+
+/* Query all courses that contain the word 'Database' in their name */
+SELECT courseName
+  FROM Courses
+ WHERE courseName LIKE '%Database%';
+
+
 /* Query the exact number and the limit number of students in one group */
-SELECT EnrollForCourses.groupNo, COUNT(studentID), studentLimit
-FROM EnrollForCourses, ExerciseGroups
-WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
-Group BY EnrollForCourses.groupNo
+SELECT EnrollForCourses.groupNo,
+       COUNT(studentID),
+       studentLimit
+  FROM EnrollForCourses,
+       ExerciseGroups
+ WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
+ GROUP BY EnrollForCourses.groupNo;
 
 /* Query the exact number of students in one exam */
-SELECT examNo, COUNT(studentID)
-FROM EnrollForExams
-GROUP BY examNo
+SELECT examNo,
+       COUNT(studentID) 
+  FROM EnrollForExams
+ GROUP BY examNo;
+
+/* Find the course codes and names of all the course that are organized during the second semester,
+ but not in the second semester. */
+SELECT courseCode,
+       courseName
+  FROM Courses
+ WHERE courseCode IN (
+           SELECT courseCode
+             FROM courseInstances
+            WHERE semester = 1
+       )
+AND 
+       courseCode NOT IN (
+           SELECT courseCode
+             FROM courseInstances
+            WHERE semester = 2
+       );
+
+/* Find how many courses take place per semester and year*/
+SELECT year,
+       semester,
+       COUNT(instanceNo) AS total
+  FROM CourseInstances
+ GROUP BY year,
+          semester;
+
 
 /* Query the number of computers in one room which could used by students to have a lecture or exam */
-SELECT buildingID, roomID, COUNT(Computers.equipmentID)
-FROM Computers, Equipments
-WHERE users = 'students' AND Computers.equipmentID = Equipments.equipmentID 
-GROUP BY buildingID, roomID
+SELECT buildingID,
+       roomID,
+       COUNT(Computers.equipmentID) 
+  FROM Computers,
+       Equipments
+ WHERE users = 'students' AND 
+       Computers.equipmentID = Equipments.equipmentID
+ GROUP BY buildingID,
+          roomID;
+
