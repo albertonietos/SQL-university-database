@@ -66,7 +66,7 @@
 \section{UML diagram}
 The following is the UML diagram (Figure \ref{fig:UML}) that we develop for a database given the requirements of the project. Further explanations regarding the diagram and its components are given in the next section.
 
-\begin{figure}[h]
+\begin{figure}[!h]
 	\centering
 	\includegraphics[width=\textwidth]{UML_project_1.png}
 	\caption{UML diagram for database}
@@ -237,7 +237,8 @@ The following are the functional dependencies from our database.
 Because all the left side is a super key of the relation, it is in BCNF.
 
 \section{Relation schema in SQL}
-
+Below is the SQL code to create the relation schema in SQLiteStudio.
+The following is the creation of all the relations (i.e. tables) that are part of the database.
 \begin{lstlisting}[ language=SQL]
 CREATE TABLE Courses (
     courseCode TEXT PRIMARY KEY,
@@ -448,8 +449,8 @@ CREATE TABLE Reserve (
 );
 \end{lstlisting}
 
-\section{Insert data into the database}
-
+\section{Insert data into the database}\label{sec:insert}
+Here, we insert all the tuples we may need to make use of the database and investigate its use cases.
 \begin{lstlisting}[language=SQL]
 INSERT INTO Courses
 VALUES ('CS-A1150', 'Databases', 5);
@@ -559,6 +560,53 @@ VALUES ('20201125E1', 'building1', 'C206');
 \subsection{Indexes}
 
 In order to create reasonable indexing, we need to know or have an educated guess of what the typical queries to the database may be.
+Based on an educated guess, we know that the number of students in the database will be orders of magnitude larger than other agents in this database like courses, equipment, lectures and so on.
+Student's activities such as registering in courses and exams will also be more frequent than operations such as instantiating a course or registering a schedule.
+Thus, studentID can be a powerful attribute to use as an index in the relation Students.
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_student ON Students (
+studentID
+);
+\end{lstlisting}
+
+Looking at the use cases (Section \ref{sec:usecases}), we can see that the courseCode is quite an useful attribute when going through the Courses relation. Thus, we will make an index out of the courseCode attribute.
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_courses ON Courses (
+courseCode
+);
+\end{lstlisting}
+
+An efficient way to access the relation CourseInstances would be to use year and semester as indexes. This would group tuples that are usually accessed together.
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_course_instances ON CourseInstances (
+year,
+semester
+);
+\end{lstlisting}
+
+There are some relations where the number of reads and writes may be lower, thus, creating an index for those (e.g. Buildings) may be counterproductive.
+There are other relations such as EnrollForCourses and EnrollForExams that will be accessed many times, therefore, they should use indexes. 
+In both cases, using studentID as the key is what seems the most efficient.
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_enroll_exams ON EnrollForExams (
+studentID
+);
+
+CREATE INDEX idx_enroll_courses ON EnrollForCourses (
+studentID
+);
+\end{lstlisting}
+
+In both Events and Reserve indexing via the attribute eventNo will give the best efficiency.
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_events ON Events (
+eventNo
+);
+CREATE INDEX idx_reserve ON Reserve (
+eventNo
+);
+\end{lstlisting}
+
 
 \subsection{Views}
 Based on the typical queries that we may expect, we can create views that will help simplify these queries and reduce their complexity.
@@ -639,30 +687,61 @@ CREATE VIEW ExamTimePlace AS
 \end{lstlisting}
 
 
-\section{Use cases and SQL-queries}
+\section{Use cases and SQL-queries} \label{sec:usecases}
+Here, we can see some intersting use cases for the database. Other typical uses of the database concerning imputation and deletion of tuples in different relations can be observed in Section \ref{sec:insert}.
+
 \begin{lstlisting}[language=SQL]
-/* Query all distinct courses (course code and name) taken place during the first semester of 2020 */
+/* 1. Query all distinct courses (course code and name) taken place during the first semester of 2020 */
 SELECT DISTINCT courseCode, courseName
   FROM CourseInstances AS CI,
        Courses AS C
  WHERE CI.courseCode = C.courseCode AND 
        year = 2020 AND 
        semester = 1;
+\end{lstlisting}
 
-/* Query all courses that contain the word 'Database' in their name */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table1.png}
+	\caption{Output of query 1}
+	\label{fig:1}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 2. Query all courses that contain the word 'Database' in their name */
 SELECT courseName
   FROM Courses
  WHERE courseName LIKE '%Database%';
 
-/* Find how many courses take place per semester and year*/
+\end{lstlisting}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table2.png}
+	\caption{Output of query 2}
+	\label{fig:2}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+
+/* 3. Find how many courses take place per semester and year*/
 SELECT year,
        semester,
        COUNT(instanceNo) AS total
   FROM CourseInstances
  GROUP BY year,
           semester;
+\end{lstlisting}
 
-/* Find how many instances of each course are scheduled.
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table3.png}
+	\caption{Output of query 3}
+	\label{fig:3}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 4. Find how many instances of each course are scheduled.
 Those courses with no instances scheduled must also be listed.
 Order the courses based on the number of instances in a descending fashion. */
 SELECT courseName as Course,
@@ -672,8 +751,17 @@ SELECT courseName as Course,
        CourseInstances ON CourseInstances.courseCode = Courses.courseCode
  GROUP BY courseName
  ORDER BY instances DESC;
+\end{lstlisting}
 
-/* Query the exact number and the limit number of students in one group */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table4.png}
+	\caption{Output of query 4}
+	\label{fig:4}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 5. Query the exact number and the limit number of students in one group */
 SELECT EnrollForCourses.groupNo,
        COUNT(studentID),
        studentLimit
@@ -681,21 +769,47 @@ SELECT EnrollForCourses.groupNo,
        ExerciseGroups
  WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
  GROUP BY EnrollForCourses.groupNo;
+\end{lstlisting}
 
-/* Query the exact number of students in one exam */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table5.png}
+	\caption{Output of query 5}
+	\label{fig:5}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 6. Query the exact number of students in one exam */
 SELECT examNo,
        COUNT(studentID) 
   FROM EnrollForExams
  GROUP BY examNo;
+\end{lstlisting}
 
-/* Query the exact number of students in a study group */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table6.png}
+	\caption{Output of query 6}
+	\label{fig:6}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 7. Query the exact number of students in a study group */
 SELECT groupNo,
        COUNT(studentID) 
   FROM EnrollForCourses
  GROUP BY groupNo;
+\end{lstlisting}
 
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table7.png}
+	\caption{Output of query 7}
+	\label{fig:7}
+\end{figure}
 
-/* Find the course codes and names of all the course that are organized during the second semester,
+\begin{lstlisting}[language=SQL]
+/* 8. Find the course codes and names of all the course that are organized during the second semester,
  but not in the second semester. */
 SELECT courseCode,
        courseName
@@ -711,8 +825,17 @@ AND
              FROM courseInstances
             WHERE semester = 2
        );
+\end{lstlisting}
 
-/* Query the number of computers in one room which could used by students to have a lecture or exam */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table8.png}
+	\caption{Output of query 8}
+	\label{fig:8}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 9. Query the number of computers in one room which could used by students to have a lecture or exam */
 SELECT buildingID,
        roomID,
        COUNT(Computers.equipmentID) 
@@ -722,8 +845,17 @@ SELECT buildingID,
        Computers.equipmentID = Equipments.equipmentID
  GROUP BY buildingID,
           roomID;
+\end{lstlisting}
 
-/* Find a room which has at least 20 seats and which is free for reservation at a certain time (2020-09-03 at 9:00 to 10:00).
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table9.png}
+	\caption{Output of query 9}
+	\label{fig:9}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 10. Find a room which has at least 20 seats and which is free for reservation at a certain time (2020-09-03 at 9:00 to 10:00).
 List the room ID and the address of the room where the building is located.
 */ 
 
@@ -761,8 +893,17 @@ SELECT Reserve.roomID,
           TIME('10:00') <= endTime) OR 
          (TIME('09:00') < startTime AND 
           TIME('10:00') > endTime) );
+\end{lstlisting}
 
-/* In this second query, there are no reservations for any Event on 2020-09-05, so all the rooms that 
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table10.png}
+	\caption{Output of query 10}
+	\label{fig:10}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 11. In this second query, there are no reservations for any Event on 2020-09-05, so all the rooms that 
 have been inserted in the database are present. No matter if they have any scheduled event at some point or not.*/
 SELECT roomID,
        buildingName,
@@ -789,8 +930,17 @@ SELECT Reserve.roomID,
           TIME('10:00') <= endTime) OR 
          (TIME('09:00') < startTime AND 
           TIME('10:00') > endTime) );
+\end{lstlisting}
 
-/* Find out for which purpose a certain room is reserved at a certain time. 
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table11.png}
+	\caption{Output of query 11}
+	\label{fig:11}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 12. Find out for which purpose a certain room is reserved at a certain time. 
 For example, is there some event in room C206 from the Computer Science Building 
 on 2020-11-25 between 08:30 and 10:30?*/
 
@@ -816,8 +966,17 @@ SELECT DISTINCT eventNo,
            OR 
            (TIME(startTime) > TIME('08:30') AND TIME(startTime) < TIME('10:30') )
         );
+\end{lstlisting}
 
-/* Now, we will check another room (e.g. room101) of the same building for the same time schedule.
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table12.png}
+	\caption{Output of query 12}
+	\label{fig:12}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 13. Now, we will check another room (e.g. room101) of the same building for the same time schedule.
 Since the previous one had an Event (Exam because of the code).
 */
 SELECT DISTINCT eventNo,
@@ -838,11 +997,20 @@ SELECT DISTINCT eventNo,
            OR 
            (TIME(startTime) > TIME('08:30') AND TIME(startTime) < TIME('10:30') )
         );
-        
+\end{lstlisting}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table13.png}
+	\caption{Output of query 13}
+	\label{fig:13}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
 /* As we can see, no tuples are returned and, thus, we can book this room for this time schedule freely.*/
 
 
-/* List all exams that are scheduled, the course name and where and when it is scheduled to take place.
+/* 14. List all exams that are scheduled, the course name and where and when it is scheduled to take place.
 Now, we can use the view that we created earlier 'ExamTimePlace' to make the query much simpler.*/ 
 SELECT examNo,
        courseName,
@@ -856,9 +1024,17 @@ SELECT examNo,
        Buildings
  WHERE ExamTimePlace.courseCode = Courses.courseCode AND 
        ExamTimePlace.buildingID = Buildings.buildingID;
+\end{lstlisting}
 
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table14.png}
+	\caption{Output of query 14}
+	\label{fig:14}
+\end{figure}
 
-/* List all students who have enrolled for a exam in the Databases course.
+\begin{lstlisting}[language=SQL]
+/* 15. List all students who have enrolled for a exam in the Databases course.
 List the student name, the program they are in, which exam they are enrolled in (multiple exams
 per year in a course are possible) and the date of the exam.*/
 SELECT studentName,
@@ -875,8 +1051,17 @@ SELECT studentName,
        Exams.courseCode = Courses.courseCode AND 
        Exams.eventNo = Events.eventNo AND
        Courses.courseName = 'Databases';
+\end{lstlisting}
 
-/* For a particular course instance (e.g. 'CS-A1150-2020-1'), list the exercise groups that are not full yet. 
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table15.png}
+	\caption{Output of query 15}
+	\label{fig:15}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 16. For a particular course instance (e.g. 'CS-A1150-2020-1'), list the exercise groups that are not full yet. 
 List how many students are enrolled in those groups that are not full.*/
 SELECT EnrollForCourses.groupNo,
        COUNT(studentID) AS totalStudents
@@ -885,8 +1070,17 @@ SELECT EnrollForCourses.groupNo,
  WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
  GROUP BY EnrollForCourses.groupNo
 HAVING COUNT(studentID) < ExerciseGroups.studentLimit;
+\end{lstlisting}
 
-/* Find out, when a certain course has been arranged or when it will be arranged */
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table16.png}
+	\caption{Output of query 16}
+	\label{fig:16}
+\end{figure}
+
+\begin{lstlisting}[language=SQL]
+/* 17. Find out, when a certain course has been arranged or when it will be arranged */
 SELECT courseName,
        year,
        semester,
@@ -896,8 +1090,74 @@ SELECT courseName,
        Courses
  WHERE CourseInstances.courseCode = Courses.courseCode
  ORDER BY startDate, endDate;
+ \end{lstlisting}
+ 
+ \begin{figure}[!h]
+ 	\centering
+ 	\includegraphics[scale=.9]{table17.png}
+ 	\caption{Output of query 17}
+ 	\label{fig:17}
+ \end{figure}
+ 
+ \begin{lstlisting}[language=SQL]
 /* As we can see the course Modern Database Systems is organized twice in 2020.
 The course instances that are listed are ordered by their start date (starting the earliest).
 If they would have the same start date, the order would be determined by the end date (earliest first). */
+
+/* 18. Delete student given a studentID ('112233') from course registration in course with course code CS-A1150. 
+After deletion, the student is no longer registered in the exercise group and, thus, not in the course either.*/
+DELETE FROM EnrollForCourses
+      WHERE studentID = '112233' AND 
+            groupNo LIKE 'CS-A1150%';
+
+/*19. In this case, the teacher plans to organise a course instance. 
+He need query whether there is already an course instance for the Computer Graphics recently. 
+If there is schedule, the teacher wants to update the startDate and endDate. 
+If there is no schedule, the teacher wants to insert one.*/
+SELECT Courses.courseCode,
+       instanceNo,
+       credits,
+       year,
+       semester,
+       startDate,
+       endDate
+  FROM Courses
+       LEFT OUTER JOIN
+       CourseInstances ON Courses.courseCode = CourseInstances.courseCode
+ WHERE courseName = 'Computer Graphics';
+ -- Now the teacher finds theres is no such course instance, so he wants to insert one.
+INSERT INTO CourseInstances VALUES (
+                                'CS-C3100-2020-1',
+                                2020,
+                                1,
+                                '2021-01-05',
+                                '2020-04-20',
+                                'CS-C3100'
+                            );
+-- Later the teacher wants to change the start date, he wants to update it.
+UPDATE CourseInstances
+   SET startDate = '2021-01-02'
+ WHERE instanceNo = 'CS-C3100-2020-1';
+
+-- When we execute the query now, we obtain the following
+SELECT Courses.courseCode,
+       instanceNo,
+       credits,
+       year,
+       semester,
+       startDate,
+       endDate
+  FROM Courses
+       LEFT OUTER JOIN
+       CourseInstances ON Courses.courseCode = CourseInstances.courseCode
+ WHERE courseName = 'Computer Graphics';
 \end{lstlisting}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=.9]{table18.png}
+	\caption{Output of query 19}
+	\label{fig:19}
+\end{figure}
+
 \end{document}

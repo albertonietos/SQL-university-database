@@ -384,6 +384,36 @@ CREATE VIEW ExamTimePlace AS
            LEFT JOIN
            Reserve ON ExamTime.eventNo = Reserve.eventNo;
 
+/* Create indexes */
+CREATE INDEX idx_student ON Students (
+    studentID
+);
+
+CREATE INDEX idx_courses ON Courses (
+    courseCode
+);
+
+CREATE INDEX idx_course_instances ON CourseInstances (
+    year,
+    semester
+);
+
+CREATE INDEX idx_enroll_exams ON EnrollForExams (
+    studentID
+);
+
+CREATE INDEX idx_enroll_courses ON EnrollForCourses (
+    studentID
+);
+
+CREATE INDEX idx_events ON Events (
+    eventNo
+);
+CREATE INDEX idx_reserve ON Reserve (
+    eventNo
+);
+
+
 /* Typical queries */
 
 /* Query all distinct courses (course code and name) taken place during the first semester of 2020 */
@@ -644,3 +674,52 @@ SELECT courseName,
 /* As we can see the course Modern Database Systems is organized twice in 2020.
 The course instances that are listed are ordered by their start date (starting the earliest).
 If they would have the same start date, the order would be determined by the end date (earliest first). */
+
+/* Delete student given a studentID ('112233') from course registration in course with course code CS-A1150. 
+After deletion, the student is no longer registered in the exercise group and, thus, not in the course either.*/
+DELETE FROM EnrollForCourses
+      WHERE studentID = '112233' AND 
+            groupNo LIKE 'CS-A1150%';
+            
+/*In this case, the teacher plans to organise a course instance. 
+He need query whether there is already an course instance for the Computer Graphics recently. 
+If there is schedule, the teacher wants to update the startDate and endDate. 
+If there is no schedule, the teacher wants to insert one.*/
+SELECT Courses.courseCode,
+       instanceNo,
+       credits,
+       year,
+       semester,
+       startDate,
+       endDate
+  FROM Courses
+       LEFT OUTER JOIN
+       CourseInstances ON Courses.courseCode = CourseInstances.courseCode
+ WHERE courseName = 'Computer Graphics';
+ -- Now the teacher finds theres is no such course instance, so he wants to insert one.
+INSERT INTO CourseInstances VALUES (
+                                'CS-C3100-2020-1',
+                                2020,
+                                1,
+                                '2021-01-05',
+                                '2020-04-20',
+                                'CS-C3100'
+                            );
+-- Later the teacher wants to change the start date, he wants to update it.
+UPDATE CourseInstances
+   SET startDate = '2021-01-02'
+ WHERE instanceNo = 'CS-C3100-2020-1';
+
+-- When we execute the query now, we obtain the following
+SELECT Courses.courseCode,
+       instanceNo,
+       credits,
+       year,
+       semester,
+       startDate,
+       endDate
+  FROM Courses
+       LEFT OUTER JOIN
+       CourseInstances ON Courses.courseCode = CourseInstances.courseCode
+ WHERE courseName = 'Computer Graphics';
+
