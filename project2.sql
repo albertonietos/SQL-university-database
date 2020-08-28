@@ -460,38 +460,16 @@ SELECT buildingID,
 
 /* Find a room which has at least 20 seats and which is free for reservation at a certain time (2020-09-03 at 9:00 to 10:00).
 List the room ID and the address of the room where the building is located.
-Query should return empty because there is an event (Lecture 1) already in that date and time.
 */ 
 
-SELECT Rooms.roomID,
-       buildingName,
-       address
-  FROM Rooms,
-       Buildings,
-       Reserve,
-       Events
- WHERE Rooms.buildingID = Buildings.buildingID AND 
-       Reserve.roomID = Rooms.roomID AND 
-       Reserve.buildingID = Rooms.buildingID AND 
-       Events.eventNo = Reserve.eventNo AND 
-       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
-        (date = '2020-09-05' AND 
-         ( (TIME('09:00') < TIME(startTime) AND 
-            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
-           (TIME('09:00') > TIME(startTime) AND 
-            TIME('10:00') > TIME(endTime) ) ) ) ) 
-UNION
-SELECT DISTINCT Rooms.roomID,
-                buildingName,
-                address
-  FROM Rooms,
-       Buildings,
-       Reserve
- WHERE Rooms.buildingID = Buildings.buildingID AND 
-       Rooms.roomID NOT IN (
-           SELECT DISTINCT roomID
-             FROM Reserve
-       );
+/* In order to select those rooms without a reservation, 3 different conditions can occur:
+    - The room has no reservations for that day
+    - The room has a reservation in that day, but not within the specified times
+    - The room has no reservations at all (it is not found in the Reserve relation).
+   Besides this, we just have to make sure that the room has space for more than 20 people.
+In this first query, one of the rooms has an event in that day and within the given timeframe.
+The others are available.
+*/
 
 SELECT Rooms.roomID,
        buildingName,
@@ -504,12 +482,13 @@ SELECT Rooms.roomID,
        Reserve.roomID = Rooms.roomID AND 
        Reserve.buildingID = Rooms.buildingID AND 
        Events.eventNo = Reserve.eventNo AND 
-       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
-        (date = '2020-09-05' AND 
+   
+       (date != '2020-09-03'/* either both startTime and endTime are BEFORE reservation */ OR 
+        (date = '2020-09-03' AND 
          ( (TIME('09:00') < TIME(startTime) AND 
             TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
            (TIME('09:00') > TIME(startTime) AND 
-            TIME('10:00') > TIME(endTime) ) ) ) ) 
+            TIME('10:00') > TIME(endTime) ) ) ) ) AND size >= 20
 UNION
 SELECT DISTINCT Rooms.roomID,
                 buildingName,
@@ -521,7 +500,39 @@ SELECT DISTINCT Rooms.roomID,
        Rooms.roomID NOT IN (
            SELECT DISTINCT roomID
              FROM Reserve
-       );
+       ) AND size >= 20;
+
+/* In this second query, there are no reservations for any Event on 2020-09-05, so all the rooms that 
+have been inserted in the database are present. No matter if they have any scheduled event at some point or not.*/
+SELECT Rooms.roomID,
+       buildingName,
+       address
+  FROM Rooms,
+       Buildings,
+       Reserve,
+       Events
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Reserve.roomID = Rooms.roomID AND 
+       Reserve.buildingID = Rooms.buildingID AND 
+       Events.eventNo = Reserve.eventNo AND 
+       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
+        (date = '2020-09-05' AND 
+         ( (TIME('09:00') < TIME(startTime) AND 
+            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
+           (TIME('09:00') > TIME(startTime) AND 
+            TIME('10:00') > TIME(endTime) ) ) ) ) AND size >= 20
+UNION
+SELECT DISTINCT Rooms.roomID,
+                buildingName,
+                address
+  FROM Rooms,
+       Buildings,
+       Reserve
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID NOT IN (
+           SELECT DISTINCT roomID
+             FROM Reserve
+       ) AND size >= 20;
 
 
 -- we need to account for those rooms that are not in any reservation
@@ -537,3 +548,8 @@ SELECT DISTINCT roomID,
            SELECT DISTINCT roomID
              FROM Reserve
        );
+
+
+/* Find out for which purpose a certain room is reserved at a certain time. 
+For example, on 2020-11-25 between 08:30 and 09:30.*/
+
