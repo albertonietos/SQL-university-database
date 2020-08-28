@@ -277,11 +277,17 @@ VALUES ('112233', 'CS-A1150-group1');
 INSERT INTO Buildings
 VALUES ('building1', 'Computer Science Building', 'Tietotekniikantalo, Konemiehentie 2, 02150 Espoo');
 
+INSERT INTO Buildings
+VALUES ('building2', 'Engineering Physics Building', 'Tietotekniikantalo, Konemiehentie 4, 02150 Espoo');
+
 INSERT INTO Rooms
 VALUES ('building1', 'room101', 30, 20);
 
 INSERT INTO Rooms
 VALUES ('building1', 'C206', 45, 30);
+
+INSERT INTO Rooms
+VALUES ('building2', 'C310', 50, 30);
 
 INSERT INTO Equipments
 VALUES ('equipment1', 'MacComputer', 'building1', 'room101');
@@ -452,4 +458,82 @@ SELECT buildingID,
  GROUP BY buildingID,
           roomID;
 
-/* Find a room which has at least 20 seats and which is free for reservation at a certain time.*/ 
+/* Find a room which has at least 20 seats and which is free for reservation at a certain time (2020-09-03 at 9:00 to 10:00).
+List the room ID and the address of the room where the building is located.
+Query should return empty because there is an event (Lecture 1) already in that date and time.
+*/ 
+
+SELECT Rooms.roomID,
+       buildingName,
+       address
+  FROM Rooms,
+       Buildings,
+       Reserve,
+       Events
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Reserve.roomID = Rooms.roomID AND 
+       Reserve.buildingID = Rooms.buildingID AND 
+       Events.eventNo = Reserve.eventNo AND 
+       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
+        (date = '2020-09-05' AND 
+         ( (TIME('09:00') < TIME(startTime) AND 
+            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
+           (TIME('09:00') > TIME(startTime) AND 
+            TIME('10:00') > TIME(endTime) ) ) ) ) 
+UNION
+SELECT DISTINCT Rooms.roomID,
+                buildingName,
+                address
+  FROM Rooms,
+       Buildings,
+       Reserve
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID NOT IN (
+           SELECT DISTINCT roomID
+             FROM Reserve
+       );
+
+SELECT Rooms.roomID,
+       buildingName,
+       address
+  FROM Rooms,
+       Buildings,
+       Reserve,
+       Events
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Reserve.roomID = Rooms.roomID AND 
+       Reserve.buildingID = Rooms.buildingID AND 
+       Events.eventNo = Reserve.eventNo AND 
+       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
+        (date = '2020-09-05' AND 
+         ( (TIME('09:00') < TIME(startTime) AND 
+            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
+           (TIME('09:00') > TIME(startTime) AND 
+            TIME('10:00') > TIME(endTime) ) ) ) ) 
+UNION
+SELECT DISTINCT Rooms.roomID,
+                buildingName,
+                address
+  FROM Rooms,
+       Buildings,
+       Reserve
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID NOT IN (
+           SELECT DISTINCT roomID
+             FROM Reserve
+       );
+
+
+-- we need to account for those rooms that are not in any reservation
+
+SELECT DISTINCT roomID,
+       buildingName,
+       address
+  FROM Rooms,
+       Buildings,
+       Reserve
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID NOT IN (
+           SELECT DISTINCT roomID
+             FROM Reserve
+       );
