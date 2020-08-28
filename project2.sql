@@ -271,6 +271,9 @@ VALUES ('224411', 'Maija Virtanen', '1991-12-05', 'AUT', '2018', '2022-08-30');
 INSERT INTO EnrollForExams
 VALUES ('112233', 'CS-A1150-exam1');
 
+INSERT INTO EnrollForExams
+VALUES ('224411', 'CS-A1150-exam1');
+
 INSERT INTO EnrollForCourses
 VALUES ('112233', 'CS-A1150-group1');
 
@@ -430,6 +433,13 @@ SELECT examNo,
   FROM EnrollForExams
  GROUP BY examNo;
 
+/* Query the exact number of students in a study group */
+SELECT groupNo,
+       COUNT(studentID) 
+  FROM EnrollForCourses
+ GROUP BY groupNo;
+
+
 /* Find the course codes and names of all the course that are organized during the second semester,
  but not in the second semester. */
 SELECT courseCode,
@@ -471,85 +481,166 @@ In this first query, one of the rooms has an event in that day and within the gi
 The others are available.
 */
 
-SELECT Rooms.roomID,
+SELECT roomID,
        buildingName,
        address
   FROM Rooms,
-       Buildings,
-       Reserve,
-       Events
+       Buildings
  WHERE Rooms.buildingID = Buildings.buildingID AND 
+       size >= 20
+EXCEPT
+SELECT Reserve.roomID,
+       buildingName,
+       address
+  FROM Reserve,
+       Events,
+       Rooms,
+        Buildings
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Reserve.eventNo = Events.eventNo AND 
        Reserve.roomID = Rooms.roomID AND 
-       Reserve.buildingID = Rooms.buildingID AND 
-       Events.eventNo = Reserve.eventNo AND 
-   
-       (date != '2020-09-03'/* either both startTime and endTime are BEFORE reservation */ OR 
-        (date = '2020-09-03' AND 
-         ( (TIME('09:00') < TIME(startTime) AND 
-            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
-           (TIME('09:00') > TIME(startTime) AND 
-            TIME('10:00') > TIME(endTime) ) ) ) ) AND size >= 20
-UNION
-SELECT DISTINCT Rooms.roomID,
-                buildingName,
-                address
-  FROM Rooms,
-       Buildings,
-       Reserve
- WHERE Rooms.buildingID = Buildings.buildingID AND 
-       Rooms.roomID NOT IN (
-           SELECT DISTINCT roomID
-             FROM Reserve
-       ) AND size >= 20;
+       date = '2020-09-03' AND 
+       ( (TIME('09:00') >= startTime AND 
+          TIME('09:00') < endTime) OR 
+         (TIME('10:00') > startTime AND 
+          TIME('10:00') <= endTime) OR 
+         (TIME('09:00') < startTime AND 
+          TIME('10:00') > endTime) );
 
 /* In this second query, there are no reservations for any Event on 2020-09-05, so all the rooms that 
 have been inserted in the database are present. No matter if they have any scheduled event at some point or not.*/
-SELECT Rooms.roomID,
+SELECT roomID,
        buildingName,
        address
   FROM Rooms,
-       Buildings,
-       Reserve,
-       Events
+       Buildings
  WHERE Rooms.buildingID = Buildings.buildingID AND 
+       size >= 20
+EXCEPT
+SELECT Reserve.roomID,
+       buildingName,
+       address
+  FROM Reserve,
+       Events,
+       Rooms,
+        Buildings
+ WHERE Rooms.buildingID = Buildings.buildingID AND 
+       Reserve.eventNo = Events.eventNo AND 
        Reserve.roomID = Rooms.roomID AND 
-       Reserve.buildingID = Rooms.buildingID AND 
-       Events.eventNo = Reserve.eventNo AND 
-       (date != '2020-09-05'/* either both startTime and endTime are BEFORE reservation */ OR 
-        (date = '2020-09-05' AND 
-         ( (TIME('09:00') < TIME(startTime) AND 
-            TIME('10:00') < TIME(endTime) ) OR-- OR both startTime and endTime are AFTER reservation 
-           (TIME('09:00') > TIME(startTime) AND 
-            TIME('10:00') > TIME(endTime) ) ) ) ) AND size >= 20
-UNION
-SELECT DISTINCT Rooms.roomID,
-                buildingName,
-                address
-  FROM Rooms,
-       Buildings,
-       Reserve
- WHERE Rooms.buildingID = Buildings.buildingID AND 
-       Rooms.roomID NOT IN (
-           SELECT DISTINCT roomID
-             FROM Reserve
-       ) AND size >= 20;
-
-
--- we need to account for those rooms that are not in any reservation
-
-SELECT DISTINCT roomID,
-       buildingName,
-       address
-  FROM Rooms,
-       Buildings,
-       Reserve
- WHERE Rooms.buildingID = Buildings.buildingID AND 
-       Rooms.roomID NOT IN (
-           SELECT DISTINCT roomID
-             FROM Reserve
-       );
-
+       date = '2020-09-05' AND 
+       ( (TIME('09:00') >= startTime AND 
+          TIME('09:00') < endTime) OR 
+         (TIME('10:00') > startTime AND 
+          TIME('10:00') <= endTime) OR 
+         (TIME('09:00') < startTime AND 
+          TIME('10:00') > endTime) );
 
 /* Find out for which purpose a certain room is reserved at a certain time. 
-For example, on 2020-11-25 between 08:30 and 09:30.*/
+For example, is there some event in room C206 from the Computer Science Building 
+on 2020-11-25 between 08:30 and 10:30?*/
 
+/* The query should return empty if no events are scheduled, or it will return the EventNo 
+that identifies which kind of event is scheduled and its schedule.
+If there is an event that overlaps the time that is given, it will be shown as well.
+No matter how small the time overlap is.*/
+SELECT DISTINCT eventNo,
+                startTime,
+                endTime
+  FROM Events,
+       Reserve,
+       Rooms,
+       Buildings
+ WHERE Events.eventNo = Reserve.eventNo AND 
+       Reserve.roomID = Rooms.roomID AND
+       Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID = 'C206' AND 
+       Buildings.buildingName = 'Computer Science Building' AND 
+       date = '2020-11-25' AND 
+       (
+           (TIME(startTime) <= TIME('08:30') AND TIME(endTime) > TIME('08:30') ) 
+           OR 
+           (TIME(startTime) > TIME('08:30') AND TIME(startTime) < TIME('10:30') )
+        );
+
+/* Now, we will check another room (e.g. room101) of the same building for the same time schedule.
+Since the previous one had an Event (Exam because of the code).
+*/
+SELECT DISTINCT eventNo,
+                startTime,
+                endTime
+  FROM Events,
+       Reserve,
+       Rooms,
+       Buildings
+ WHERE Events.eventNo = Reserve.eventNo AND 
+       Reserve.roomID = Rooms.roomID AND
+       Rooms.buildingID = Buildings.buildingID AND 
+       Rooms.roomID = 'room101' AND 
+       Buildings.buildingName = 'Computer Science Building' AND 
+       date = '2020-11-25' AND 
+       (
+           (TIME(startTime) <= TIME('08:30') AND TIME(endTime) > TIME('08:30') ) 
+           OR 
+           (TIME(startTime) > TIME('08:30') AND TIME(startTime) < TIME('10:30') )
+        );
+        
+/* As we can see, no tuples are returned and, thus, we can book this room for this time schedule freely.*/
+
+
+/* List all exams that are scheduled, the course name and where and when it is scheduled to take place.
+Now, we can use the view that we created earlier 'ExamTimePlace' to make the query much simpler.*/ 
+SELECT examNo,
+       courseName,
+       date,
+       startExamTime AS start,
+       endExamTime AS end,
+       roomId,
+       buildingName
+  FROM ExamTimePlace,
+       Courses,
+       Buildings
+ WHERE ExamTimePlace.courseCode = Courses.courseCode AND 
+       ExamTimePlace.buildingID = Buildings.buildingID;
+
+
+/* List all students who have enrolled for a exam in the Databases course.
+List the student name, the program they are in, which exam they are enrolled in (multiple exams
+per year in a course are possible) and the date of the exam.*/
+SELECT studentName,
+       program,
+       examNo,
+       date
+  FROM EnrollForExams,
+       Exams,
+       Courses,
+       Students,
+       Events
+ WHERE EnrollForExams.studentID = Students.studentID AND 
+       EnrollForExams.examNo = Exams.examNo AND 
+       Exams.courseCode = Courses.courseCode AND 
+       Exams.eventNo = Events.eventNo AND
+       Courses.courseName = 'Databases';
+
+/* For a particular course instance (e.g. 'CS-A1150-2020-1'), list the exercise groups that are not full yet. 
+List how many students are enrolled in those groups that are not full.*/
+SELECT EnrollForCourses.groupNo,
+       COUNT(studentID) AS totalStudents
+  FROM EnrollForCourses,
+       ExerciseGroups
+ WHERE EnrollForCourses.groupNo = ExerciseGroups.groupNo
+ GROUP BY EnrollForCourses.groupNo
+HAVING COUNT(studentID) < ExerciseGroups.studentLimit;
+
+/* Find out, when a certain course has been arranged or when it will be arranged */
+SELECT courseName,
+       year,
+       semester,
+       startDate,
+       endDate
+  FROM CourseInstances,
+       Courses
+ WHERE CourseInstances.courseCode = Courses.courseCode
+ ORDER BY startDate, endDate;
+/* As we can see the course Modern Database Systems is organized twice in 2020.
+The course instances that are listed are ordered by their start date (starting the earliest).
+If they would have the same start date, the order would be determined by the end date (earliest first). */
