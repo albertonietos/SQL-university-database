@@ -217,6 +217,9 @@ VALUES ('CS-E4800', 'Artificial Intelligence', 5);
 INSERT INTO Courses
 VALUES ('CS-E4610', 'Modern Database Systems', 5);
 
+INSERT INTO Courses
+VALUES ('CS-C3100', 'Computer Graphics', 5);
+
 INSERT INTO CourseInstances
 VALUES ('CS-A1150-2020-1', 2020, 1, '2020-09-03', '2020-11-20', 'CS-A1150');
 
@@ -277,6 +280,9 @@ VALUES ('building1', 'Computer Science Building', 'Tietotekniikantalo, Konemiehe
 INSERT INTO Rooms
 VALUES ('building1', 'room101', 30, 20);
 
+INSERT INTO Rooms
+VALUES ('building1', 'C206', 45, 30);
+
 INSERT INTO Equipments
 VALUES ('equipment1', 'MacComputer', 'building1', 'room101');
 
@@ -291,6 +297,9 @@ VALUES ('equipment1', 'teachers');
 
 INSERT INTO Reserve
 VALUES ('20200903L1', 'building1', 'room101');
+
+INSERT INTO Reserve
+VALUES ('20201125E1', 'building1', 'C206'); 
 
 /* Create views */
 CREATE VIEW LectureTimePlace AS
@@ -381,6 +390,24 @@ SELECT courseName
   FROM Courses
  WHERE courseName LIKE '%Database%';
 
+/* Find how many courses take place per semester and year*/
+SELECT year,
+       semester,
+       COUNT(instanceNo) AS total
+  FROM CourseInstances
+ GROUP BY year,
+          semester;
+
+/* Find how many instances of each course are scheduled.
+Those courses with no instances scheduled must also be listed.
+Order the courses based on the number of instances in a descending fashion. */
+SELECT courseName as Course,
+       COUNT(instanceNo) AS Instances
+  FROM Courses
+       LEFT OUTER JOIN
+       CourseInstances ON CourseInstances.courseCode = Courses.courseCode
+ GROUP BY courseName
+ ORDER BY instances DESC;
 
 /* Query the exact number and the limit number of students in one group */
 SELECT EnrollForCourses.groupNo,
@@ -414,15 +441,6 @@ AND
             WHERE semester = 2
        );
 
-/* Find how many courses take place per semester and year*/
-SELECT year,
-       semester,
-       COUNT(instanceNo) AS total
-  FROM CourseInstances
- GROUP BY year,
-          semester;
-
-
 /* Query the number of computers in one room which could used by students to have a lecture or exam */
 SELECT buildingID,
        roomID,
@@ -434,3 +452,4 @@ SELECT buildingID,
  GROUP BY buildingID,
           roomID;
 
+/* Find a room which has at least 20 seats and which is free for reservation at a certain time.*/ 
