@@ -5,4 +5,4 @@ The project is developed from a list of [requirements](https://github.com/albert
 From the UML diagram, a relation schema is created which is then converted to SQL.
 All this is described in the [report](https://github.com/albertonietos/university-database/blob/master/report/main.pdf) for the project. 
 
-The SQL code containing all the files to create the database, insert tuples into it and create complex queries can be found at [**project2.sql**](https://github.com/albertonietos/university-database/blob/master/project2.sql).
+The SQL code containing all the files to create the database, insert tuples into it and create complex queries can be found in the [source code](https://github.com/albertonietos/university-database/tree/master/src) folder.
