@@ -1,4 +1,4 @@
-# university-database
+# SQL-university-database
 Repo containing the project files for a University database in SQL.
 The project is developed from a list of [requirements](https://github.com/albertonietos/university-database/blob/master/project1.pdf) which is used to build a 
 [UML diagram](https://github.com/albertonietos/university-database/blob/master/report/UML_project_1.png).
